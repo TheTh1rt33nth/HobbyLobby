@@ -37,9 +37,15 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 
 	logger.Println("DB migrated successfully")
 
+	// Stores
+	hobbyProjectStore := store.NewPostgresHobbyProjectStore(pgDb)
+
+	// Handlers
+	hobbyProjectHandler := api.NewHobbyProjectHandler(hobbyProjectStore)
+
 	app := &Application{
 		Logger:              logger,
-		HobbyProjectHandler: api.NewHobbyProjectHandler(),
+		HobbyProjectHandler: hobbyProjectHandler,
 		DB:                  pgDb,
 	}
 
