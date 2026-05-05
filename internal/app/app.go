@@ -23,7 +23,7 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 
 	pgDb, err := store.Open()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Println("Connected to the DB")
@@ -32,7 +32,7 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 
 	err = store.MigrateFS(pgDb, migrations.FS, ".")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logger.Println("DB migrated successfully")
