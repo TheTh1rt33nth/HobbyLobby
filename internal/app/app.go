@@ -41,7 +41,7 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 	hobbyProjectStore := store.NewPostgresHobbyProjectStore(pgDb)
 
 	// Handlers
-	hobbyProjectHandler := api.NewHobbyProjectHandler(hobbyProjectStore)
+	hobbyProjectHandler := api.NewHobbyProjectHandler(hobbyProjectStore, logger)
 
 	app := &Application{
 		Logger:              logger,
