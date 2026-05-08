@@ -16,5 +16,8 @@ func SetupRoutes(app *app.Application) *chi.Mux {
 	router.Put("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.UpdateHobbyProject)
 	router.Delete("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.DeleteHobbyProject)
 
+	// Users
+	router.Post("/api/users/register", app.UserHandler.RegisterUser)
+
 	return router
 }

@@ -76,7 +76,7 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *
 	defer tx.Rollback()
 
 	query := `UPDATE projects 
-	SET name = $1, description = $2 
+	SET name = $1, description = $2, updated_at = NOW() 
 	WHERE id = $3 AND isDeleted = FALSE`
 
 	result, err := tx.Exec(query, project.Name, project.Description, projectId)
@@ -109,7 +109,7 @@ func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
 	defer tx.Rollback()
 
 	query := `UPDATE projects 
-	SET isDeleted = TRUE 
+	SET isDeleted = TRUE, updated_at = NOW() 
 	WHERE id = $1 AND isDeleted = FALSE`
 
 	result, err := tx.Exec(query, projectId)
