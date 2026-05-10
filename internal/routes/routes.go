@@ -8,13 +8,20 @@ import (
 func SetupRoutes(app *app.Application) *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/health", app.HealthCheck)
+	// Populate user context and require authentication for these
+	router.Group(func(r chi.Router) {
+		r.Use(app.UserMiddleware.PopulateUserContext)
+		r.Use(app.UserMiddleware.RequireAuthenticatedUserContext)
 
-	// Hobby projects
-	router.Get("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.GetHobbyProjectById)
-	router.Post("/api/hobby-projects", app.HobbyProjectHandler.CreateHobbyProject)
-	router.Put("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.UpdateHobbyProject)
-	router.Delete("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.DeleteHobbyProject)
+		// Hobby projects
+		r.Get("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.GetHobbyProjectById)
+		r.Post("/api/hobby-projects", app.HobbyProjectHandler.CreateHobbyProject)
+		r.Put("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.UpdateHobbyProject)
+		r.Delete("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.DeleteHobbyProject)
+
+	})
+
+	router.Get("/health", app.HealthCheck)
 
 	// Users
 	router.Post("/api/users/register", app.UserHandler.RegisterUser)

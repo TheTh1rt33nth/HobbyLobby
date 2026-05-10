@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/api"
+	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
 	"github.com/TheTh1rt33nth/HobbyLobby/migrations"
 )
@@ -16,6 +17,7 @@ type Application struct {
 	HobbyProjectHandler *api.HobbyProjectHandler
 	UserHandler         *api.UserHandler
 	TokenHandler        *api.TokenHandler
+	UserMiddleware      middleware.UserMiddleware
 	DB                  *sql.DB
 }
 
@@ -49,11 +51,15 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 	userHandler := api.NewUserHandler(userStore, logger)
 	tokenHandler := api.NewTokenHandler(tokenStore, userStore, logger)
 
+	// Middleware
+	userMiddleware := middleware.UserMiddleware{UserStore: userStore}
+
 	app := &Application{
 		Logger:              logger,
 		HobbyProjectHandler: hobbyProjectHandler,
 		UserHandler:         userHandler,
 		TokenHandler:        tokenHandler,
+		UserMiddleware:      userMiddleware,
 		DB:                  pgDb,
 	}
 
