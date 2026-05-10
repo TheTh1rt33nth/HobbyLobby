@@ -18,13 +18,13 @@ type contextKey string
 
 const UserContextKey = contextKey("user")
 
-func SetUser(r *http.Request, user *store.User) *http.Request {
+func SetUserContext(r *http.Request, user *store.User) *http.Request {
 	ctx := context.WithValue(r.Context(), UserContextKey, user)
 
 	return r.WithContext(ctx)
 }
 
-func GetUser(r *http.Request) *store.User {
+func GetUserContext(r *http.Request) *store.User {
 	user, ok := r.Context().Value(UserContextKey).(*store.User)
 	if !ok {
 		return nil
@@ -40,7 +40,7 @@ func (um *UserMiddleware) PopulateUserContext(next http.Handler) http.Handler {
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			r = SetUser(r, store.AnonymousUser)
+			r = SetUserContext(r, store.AnonymousUser)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -62,14 +62,14 @@ func (um *UserMiddleware) PopulateUserContext(next http.Handler) http.Handler {
 			return
 		}
 
-		r = SetUser(r, user)
+		r = SetUserContext(r, user)
 		next.ServeHTTP(w, r)
 	})
 }
 
 func (um *UserMiddleware) RequireAuthenticatedUserContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := GetUser(r)
+		user := GetUserContext(r)
 		if user == nil || user.IsAnonymous() {
 			handler_utils.WriteJSON(w, http.StatusUnauthorized, handler_utils.Envelope{"error": "authentication required for this route"})
 			return

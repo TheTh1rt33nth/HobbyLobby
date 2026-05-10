@@ -17,8 +17,8 @@ func NewPostgresTokenStore(db *sql.DB) *PostgresTokenStore {
 
 type TokenStore interface {
 	InsertToken(token *tokens.Token) error
-	CreateToken(userId int64, ttl time.Duration, scope string) (*tokens.Token, error)
-	DeleteTokensForUser(userId int64, scope string) error
+	CreateToken(userId int, ttl time.Duration, scope string) (*tokens.Token, error)
+	DeleteTokensForUser(userId int, scope string) error
 }
 
 func (pg *PostgresTokenStore) InsertToken(token *tokens.Token) error {
@@ -29,7 +29,7 @@ func (pg *PostgresTokenStore) InsertToken(token *tokens.Token) error {
 	return err
 }
 
-func (pg *PostgresTokenStore) CreateToken(userId int64, ttl time.Duration, scope string) (*tokens.Token, error) {
+func (pg *PostgresTokenStore) CreateToken(userId int, ttl time.Duration, scope string) (*tokens.Token, error) {
 	token, err := tokens.GenerateToken(int(userId), ttl, scope)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (pg *PostgresTokenStore) CreateToken(userId int64, ttl time.Duration, scope
 	return token, nil
 }
 
-func (pg *PostgresTokenStore) DeleteTokensForUser(userId int64, scope string) error {
+func (pg *PostgresTokenStore) DeleteTokensForUser(userId int, scope string) error {
 	query := `DELETE FROM tokens 
 	WHERE user_id = $1 AND scope = $2`
 	_, err := pg.db.Exec(query, userId, scope)

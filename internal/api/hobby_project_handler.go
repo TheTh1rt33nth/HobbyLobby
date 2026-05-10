@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
+	"github.com/TheTh1rt33nth/HobbyLobby/internal/utils/auth_utils"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/utils/handler_utils"
 )
 
@@ -36,10 +38,18 @@ func (hph *HobbyProjectHandler) GetHobbyProjectById(w http.ResponseWriter, r *ht
 		return
 	}
 
+	user := middleware.GetUserContext(r)
+	if !auth_utils.UserHasAccess(project, user) {
+		handler_utils.WriteJSON(w, http.StatusForbidden, handler_utils.Envelope{"error": "you do not have access to this Project"})
+		return
+	}
+
 	handler_utils.WriteJSON(w, http.StatusOK, handler_utils.Envelope{"hobbyProject": project})
 }
 
 func (hph *HobbyProjectHandler) CreateHobbyProject(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserContext(r)
+
 	var project store.HobbyProject
 	err := json.NewDecoder(r.Body).Decode(&project)
 	if err != nil {
@@ -47,6 +57,8 @@ func (hph *HobbyProjectHandler) CreateHobbyProject(w http.ResponseWriter, r *htt
 		handler_utils.WriteJSON(w, http.StatusBadRequest, handler_utils.Envelope{"error": "invalid payload"})
 		return
 	}
+
+	project.UserId = user.Id
 
 	createdProject, err := hph.projectStore.CreateHobbyProject(&project)
 	if err != nil {
@@ -77,6 +89,12 @@ func (hph *HobbyProjectHandler) UpdateHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
+	user := middleware.GetUserContext(r)
+	if !auth_utils.UserHasAccess(existingProject, user) {
+		handler_utils.WriteJSON(w, http.StatusForbidden, handler_utils.Envelope{"error": "you do not have access to this Project"})
+		return
+	}
+
 	var project store.HobbyProject
 	err = json.NewDecoder(r.Body).Decode(&project)
 	if err != nil {
@@ -103,7 +121,24 @@ func (hph *HobbyProjectHandler) DeleteHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
-	err = hph.projectStore.DeleteHobbyProject(hobbyProjectId)
+	existingProject, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	if err != nil {
+		hph.logger.Printf("DeleteHobbyProject: failed to get existing HobbyProject: %v", err)
+		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
+		return
+	}
+	if existingProject == nil {
+		handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "HobbyProject not found"})
+		return
+	}
+
+	user := middleware.GetUserContext(r)
+	if !auth_utils.UserHasAccess(existingProject, user) {
+		handler_utils.WriteJSON(w, http.StatusForbidden, handler_utils.Envelope{"error": "you do not have access to this Project"})
+		return
+	}
+
+	err = hph.projectStore.DeleteHobbyProject(existingProject.Id)
 	if err != nil {
 		hph.logger.Printf("DeleteHobbyProject: failed to delete HobbyProject: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})

@@ -1,9 +1,12 @@
 package store
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type HobbyProject struct {
 	Id          int    `json:"id"`
+	UserId      int    `json:"userId"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
@@ -50,11 +53,11 @@ func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (
 
 	defer tx.Rollback()
 
-	query := `INSERT INTO projects (name, description) 
-	VALUES ($1, $2) 
+	query := `INSERT INTO projects (user_id, name, description) 
+	VALUES ($1, $2, $3) 
 	RETURNING id`
 
-	err = tx.QueryRow(query, project.Name, project.Description).Scan(&project.Id)
+	err = tx.QueryRow(query, project.UserId, project.Name, project.Description).Scan(&project.Id)
 	if err != nil {
 		return nil, err
 	}

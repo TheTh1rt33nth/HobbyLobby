@@ -41,7 +41,7 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 }
 
 type User struct {
-	Id        int64     `json:"id"`
+	Id        int       `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  password  `json:"-"`
@@ -64,15 +64,15 @@ func NewPostgresUserStore(db *sql.DB) *PostgresUserStore {
 }
 
 type UserStore interface {
-	GetUserById(id int64) (*User, error)
+	GetUserById(id int) (*User, error)
 	GetUserByUsername(name string) (*User, error)
 	GetUserByToken(scope, tokenPlainText string) (*User, error)
 	CreateUser(user *User) (*User, error)
-	UpdateUser(userId int64, user *User) (*User, error)
-	DeleteUser(userId int64) error
+	UpdateUser(userId int, user *User) (*User, error)
+	DeleteUser(userId int) error
 }
 
-func (pg *PostgresUserStore) GetUserById(id int64) (*User, error) {
+func (pg *PostgresUserStore) GetUserById(id int) (*User, error) {
 	user := &User{Password: password{}}
 
 	query := `SELECT id, username, email, password_hash, created_at, updated_at
@@ -164,7 +164,7 @@ func (pg *PostgresUserStore) CreateUser(user *User) (*User, error) {
 	return pg.GetUserById(user.Id)
 }
 
-func (pg *PostgresUserStore) UpdateUser(userId int64, user *User) (*User, error) {
+func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
 	query := `UPDATE users 
 	SET username = $1, email = $2, password_hash = $3, updated_at = NOW() 
 	WHERE id = $4 AND is_deleted = FALSE`
@@ -186,7 +186,7 @@ func (pg *PostgresUserStore) UpdateUser(userId int64, user *User) (*User, error)
 	return pg.GetUserById(userId)
 }
 
-func (pg *PostgresUserStore) DeleteUser(userId int64) error {
+func (pg *PostgresUserStore) DeleteUser(userId int) error {
 	query := `UPDATE users 
 	SET is_deleted = TRUE, updated_at = NOW() 
 	WHERE id = $1 AND is_deleted = FALSE`
