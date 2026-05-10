@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS projects (
     -- user_id
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    isDeleted BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -28,7 +28,7 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(id int) (*HobbyProject,
 
 	query := `SELECT id, name, description 
 	FROM projects 
-	WHERE id = $1 AND isDeleted = FALSE`
+	WHERE id = $1 AND is_deleted = FALSE`
 
 	err := pg.db.QueryRow(query, id).Scan(&project.Id, &project.Name, &project.Description)
 	if err == sql.ErrNoRows {
@@ -77,7 +77,7 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *
 
 	query := `UPDATE projects 
 	SET name = $1, description = $2, updated_at = NOW() 
-	WHERE id = $3 AND isDeleted = FALSE`
+	WHERE id = $3 AND is_deleted = FALSE`
 
 	result, err := tx.Exec(query, project.Name, project.Description, projectId)
 	if err != nil {
@@ -109,8 +109,8 @@ func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
 	defer tx.Rollback()
 
 	query := `UPDATE projects 
-	SET isDeleted = TRUE, updated_at = NOW() 
-	WHERE id = $1 AND isDeleted = FALSE`
+	SET is_deleted = TRUE, updated_at = NOW() 
+	WHERE id = $1 AND is_deleted = FALSE`
 
 	result, err := tx.Exec(query, projectId)
 	if err != nil {

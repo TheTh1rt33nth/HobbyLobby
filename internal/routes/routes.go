@@ -19,5 +19,9 @@ func SetupRoutes(app *app.Application) *chi.Mux {
 	// Users
 	router.Post("/api/users/register", app.UserHandler.RegisterUser)
 
+	// Auth & Tokens
+	// TODO: dedicated login endpoint that
+	router.Post("/api/tokens/auth", app.TokenHandler.CreateToken)
+
 	return router
 }

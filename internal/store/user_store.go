@@ -40,7 +40,7 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 }
 
 type User struct {
-	Id        int       `json:"id"`
+	Id        int64     `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  password  `json:"-"`
@@ -57,21 +57,27 @@ func NewPostgresUserStore(db *sql.DB) *PostgresUserStore {
 }
 
 type UserStore interface {
-	GetUserById(id int) (*User, error)
+	GetUserById(id int64) (*User, error)
 	GetUserByUsername(name string) (*User, error)
 	CreateUser(user *User) (*User, error)
-	UpdateUser(userId int, user *User) (*User, error)
-	DeleteUser(userId int) error
+	UpdateUser(userId int64, user *User) (*User, error)
+	DeleteUser(userId int64) error
 }
 
-func (pg *PostgresUserStore) GetUserById(id int) (*User, error) {
+func (pg *PostgresUserStore) GetUserById(id int64) (*User, error) {
 	user := &User{Password: password{}}
 
-	query := `SELECT id, username, email, created_at, updated_at
+	query := `SELECT id, username, email, password_hash, created_at, updated_at
 	FROM users 
-	WHERE id = $1 AND isDeleted = FALSE`
+	WHERE id = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, id).Scan(&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	err := pg.db.QueryRow(query, id).Scan(
+		&user.Id, 
+		&user.Username, 
+		&user.Email, 
+		&user.Password.hash, 
+		&user.CreatedAt, 
+		&user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -86,11 +92,17 @@ func (pg *PostgresUserStore) GetUserById(id int) (*User, error) {
 func (pg *PostgresUserStore) GetUserByUsername(name string) (*User, error) {
 	user := &User{Password: password{}}
 
-	query := `SELECT id, username, email, created_at, updated_at
+	query := `SELECT id, username, email, password_hash, created_at, updated_at
 	FROM users 
-	WHERE username = $1 AND isDeleted = FALSE`
+	WHERE username = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, name).Scan(&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	err := pg.db.QueryRow(query, name).Scan(
+		&user.Id, 
+		&user.Username, 
+		&user.Email, 
+		&user.Password.hash, 
+		&user.CreatedAt, 
+		&user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -112,13 +124,14 @@ func (pg *PostgresUserStore) CreateUser(user *User) (*User, error) {
 		return nil, err
 	}
 
+	// TODO: do not expose password hash here
 	return pg.GetUserById(user.Id)
 }
 
-func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
+func (pg *PostgresUserStore) UpdateUser(userId int64, user *User) (*User, error) {
 	query := `UPDATE users 
 	SET username = $1, email = $2, password_hash = $3, updated_at = NOW() 
-	WHERE id = $4 AND isDeleted = FALSE`
+	WHERE id = $4 AND is_deleted = FALSE`
 
 	result, err := pg.db.Exec(query, user.Username, user.Email, user.Password.hash, userId)
 	if err != nil {
@@ -133,13 +146,14 @@ func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
 		return nil, sql.ErrNoRows
 	}
 
+	// TODO: do not expose password hash here
 	return pg.GetUserById(userId)
 }
 
-func (pg *PostgresUserStore) DeleteUser(userId int) error {
+func (pg *PostgresUserStore) DeleteUser(userId int64) error {
 	query := `UPDATE users 
-	SET isDeleted = TRUE, updated_at = NOW() 
-	WHERE id = $1`
+	SET is_deleted = TRUE, updated_at = NOW() 
+	WHERE id = $1 AND is_deleted = FALSE`
 
 	result, err := pg.db.Exec(query, userId)
 	if err != nil {
