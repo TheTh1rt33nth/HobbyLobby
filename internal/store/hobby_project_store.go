@@ -102,7 +102,7 @@ func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (
 	err = tx.QueryRow(query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction, project.Status).
 		Scan(&project.Id, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
-		return nil, err
+		return nil, translatePgError(err)
 	}
 
 	if err = tx.Commit(); err != nil {

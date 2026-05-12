@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -53,6 +54,10 @@ func (uh *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err = uh.userStore.CreateUser(user)
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			handler_utils.WriteJSON(w, http.StatusConflict, handler_utils.Envelope{"error": "username or email already in use"})
+			return
+		}
 		uh.logger.Printf("RegisterUser: failed to create user: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 		return

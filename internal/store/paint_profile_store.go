@@ -246,7 +246,7 @@ func (pg *PostgresPaintProfileStore) CreatePaintStep(step *PaintStep) (*PaintSte
 	err = tx.QueryRow(query, step.PaintProfileId, step.StepOrder, step.PaintName, step.Brand, step.PaintType, step.ApplicationMethod, step.ColorHex, step.Notes).
 		Scan(&step.Id)
 	if err != nil {
-		return nil, err
+		return nil, translatePgError(err)
 	}
 
 	if err = tx.Commit(); err != nil {

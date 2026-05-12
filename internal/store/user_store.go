@@ -157,7 +157,7 @@ func (pg *PostgresUserStore) CreateUser(user *User) (*User, error) {
 
 	err := pg.db.QueryRow(query, user.Username, user.Email, user.Password.hash).Scan(&user.Id)
 	if err != nil {
-		return nil, err
+		return nil, translatePgError(err)
 	}
 
 	// TODO: do not expose password hash here

@@ -81,6 +81,10 @@ func (hph *HobbyProjectHandler) CreateHobbyProject(w http.ResponseWriter, r *htt
 
 	createdProject, err := hph.projectStore.CreateHobbyProject(&project)
 	if err != nil {
+		if errors.Is(err, store.ErrInvalidInput) {
+			handler_utils.WriteJSON(w, http.StatusBadRequest, handler_utils.Envelope{"error": "invalid field value"})
+			return
+		}
 		hph.logger.Printf("CreateHobbyProject: failed to create HobbyProject: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 		return

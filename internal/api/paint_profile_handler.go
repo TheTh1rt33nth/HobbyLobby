@@ -207,6 +207,10 @@ func (pph *PaintProfileHandler) AddPaintStep(w http.ResponseWriter, r *http.Requ
 
 	createdStep, err := pph.paintProfileStore.CreatePaintStep(&step)
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			handler_utils.WriteJSON(w, http.StatusConflict, handler_utils.Envelope{"error": "a step with that order already exists in this profile"})
+			return
+		}
 		pph.logger.Printf("AddPaintStep: failed to create step: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 		return
