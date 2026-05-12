@@ -179,7 +179,7 @@ func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
 		return nil, err
 	}
 	if rowsAffected == 0 {
-		return nil, sql.ErrNoRows
+		return nil, ErrNotFound
 	}
 
 	// TODO: do not expose password hash here
@@ -201,7 +201,7 @@ func (pg *PostgresUserStore) DeleteUser(userId int) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return ErrNotFound
 	}
 
 	return nil

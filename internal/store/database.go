@@ -2,12 +2,15 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/pressly/goose/v3"
 )
+
+var ErrNotFound = errors.New("not found")
 
 func Open() (*sql.DB, error) {
 	db, err := sql.Open("pgx", "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable")

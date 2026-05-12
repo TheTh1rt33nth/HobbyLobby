@@ -29,6 +29,8 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func strPtr(s string) *string { return &s }
+
 func TestCreateHobbyProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
@@ -44,7 +46,7 @@ func TestCreateHobbyProject(t *testing.T) {
 			name: "Valid project",
 			project: &store.HobbyProject{
 				Name:        "Test Project",
-				Description: "This is a test project decription",
+				Description: strPtr("This is a test project decription"),
 			},
 			expectError: false,
 		},

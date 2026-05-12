@@ -2,13 +2,19 @@ package store
 
 import (
 	"database/sql"
+	"time"
 )
 
 type HobbyProject struct {
-	Id          int    `json:"id"`
-	UserId      int    `json:"userId"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Id          int       `json:"id"`
+	UserId      int       `json:"userId"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description"`
+	GameSystem  *string   `json:"gameSystem"`
+	Faction     *string   `json:"faction"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type PostgresHobbyProjectStore struct {
@@ -21,6 +27,7 @@ func NewPostgresHobbyProjectStore(db *sql.DB) *PostgresHobbyProjectStore {
 
 type HobbyProjectStore interface {
 	GetHobbyProjectById(id int) (*HobbyProject, error)
+	GetHobbyProjectsByUserId(userId int) ([]*HobbyProject, error)
 	CreateHobbyProject(project *HobbyProject) (*HobbyProject, error)
 	UpdateHobbyProject(projectId int, project *HobbyProject) (*HobbyProject, error)
 	DeleteHobbyProject(projectId int) error
@@ -29,15 +36,18 @@ type HobbyProjectStore interface {
 func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(id int) (*HobbyProject, error) {
 	project := &HobbyProject{}
 
-	query := `SELECT id, name, description 
-	FROM projects 
+	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
+	FROM projects
 	WHERE id = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, id).Scan(&project.Id, &project.Name, &project.Description)
+	err := pg.db.QueryRow(query, id).Scan(
+		&project.Id, &project.UserId, &project.Name, &project.Description,
+		&project.GameSystem, &project.Faction, &project.Status,
+		&project.CreatedAt, &project.UpdatedAt,
+	)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -45,25 +55,57 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(id int) (*HobbyProject,
 	return project, nil
 }
 
+func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(userId int) ([]*HobbyProject, error) {
+	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
+	FROM projects
+	WHERE user_id = $1 AND is_deleted = FALSE
+	ORDER BY created_at DESC`
+
+	rows, err := pg.db.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*HobbyProject
+	for rows.Next() {
+		project := &HobbyProject{}
+		err = rows.Scan(
+			&project.Id, &project.UserId, &project.Name, &project.Description,
+			&project.GameSystem, &project.Faction, &project.Status,
+			&project.CreatedAt, &project.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, project)
+	}
+
+	return projects, rows.Err()
+}
+
 func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (*HobbyProject, error) {
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return nil, err
 	}
-
 	defer tx.Rollback()
 
-	query := `INSERT INTO projects (user_id, name, description) 
-	VALUES ($1, $2, $3) 
-	RETURNING id`
+	if project.Status == "" {
+		project.Status = "unassembled"
+	}
 
-	err = tx.QueryRow(query, project.UserId, project.Name, project.Description).Scan(&project.Id)
+	query := `INSERT INTO projects (user_id, name, description, game_system, faction, status)
+	VALUES ($1, $2, $3, $4, $5, $6)
+	RETURNING id, created_at, updated_at`
+
+	err = tx.QueryRow(query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction, project.Status).
+		Scan(&project.Id, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -75,32 +117,32 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *
 	if err != nil {
 		return nil, err
 	}
-
 	defer tx.Rollback()
 
-	query := `UPDATE projects 
-	SET name = $1, description = $2, updated_at = NOW() 
-	WHERE id = $3 AND is_deleted = FALSE`
+	query := `UPDATE projects
+	SET name = $1, description = $2, game_system = $3, faction = $4, status = $5, updated_at = NOW()
+	WHERE id = $6 AND is_deleted = FALSE
+	RETURNING id, user_id, name, description, game_system, faction, status, created_at, updated_at`
 
-	result, err := tx.Exec(query, project.Name, project.Description, projectId)
+	updated := &HobbyProject{}
+	err = tx.QueryRow(query, project.Name, project.Description, project.GameSystem, project.Faction, project.Status, projectId).
+		Scan(
+			&updated.Id, &updated.UserId, &updated.Name, &updated.Description,
+			&updated.GameSystem, &updated.Faction, &updated.Status,
+			&updated.CreatedAt, &updated.UpdatedAt,
+		)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return nil, err
-	}
-	if rowsAffected == 0 {
-		return nil, sql.ErrNoRows
-	}
-
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
 
-	return project, nil
+	return updated, nil
 }
 
 func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
@@ -125,7 +167,7 @@ func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return ErrNotFound
 	}
 
 	err = tx.Commit()
