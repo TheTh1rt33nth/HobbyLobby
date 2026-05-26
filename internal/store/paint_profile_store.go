@@ -229,8 +229,13 @@ func (pg *PostgresPaintProfileStore) CreatePaintStep(step *PaintStep) (*PaintSte
 	}
 	defer tx.Rollback()
 
-	// Auto-assign step_order as max + 1 if not provided
+	// Auto-assign step_order as max + 1 if not provided.
+	// An advisory lock on the profile ID serializes concurrent auto-assigns,
+	// preventing two requests from racing to read the same MAX and colliding on the UNIQUE constraint.
 	if step.StepOrder == 0 {
+		if _, err = tx.Exec(`SELECT pg_advisory_xact_lock($1)`, step.PaintProfileId); err != nil {
+			return nil, err
+		}
 		var maxOrder int
 		err = tx.QueryRow(`SELECT COALESCE(MAX(step_order), 0) FROM paint_steps WHERE paint_profile_id = $1`, step.PaintProfileId).Scan(&maxOrder)
 		if err != nil {

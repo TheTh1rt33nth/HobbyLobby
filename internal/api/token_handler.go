@@ -61,14 +61,7 @@ func (th *TokenHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = th.tokenStore.DeleteTokensForUser(user.Id, "authentication")
-	if err != nil {
-		th.logger.Printf("CreateToken: failed to delete old tokens: %v", err)
-		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
-		return
-	}
-
-	token, err := th.tokenStore.CreateToken(user.Id, 24*time.Hour, "authentication")
+	token, err := th.tokenStore.DeleteAndCreateToken(user.Id, 24*time.Hour, "authentication")
 	if err != nil {
 		th.logger.Printf("CreateToken: failed to create token: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})

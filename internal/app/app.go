@@ -1,10 +1,12 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/api"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
@@ -29,6 +31,20 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 	pgDb, err := store.Open()
 	if err != nil {
 		return nil, err
+	}
+
+	const maxRetries = 5
+	for i := 0; i < maxRetries; i++ {
+		if err = pgDb.PingContext(context.Background()); err == nil {
+			break
+		}
+		if i == maxRetries-1 {
+			pgDb.Close()
+			return nil, fmt.Errorf("database not reachable after %d attempts: %w", maxRetries, err)
+		}
+		wait := time.Duration(1<<uint(i)) * time.Second
+		logger.Printf("DB not ready (attempt %d/%d): %v. Retrying in %s...", i+1, maxRetries, err, wait)
+		time.Sleep(wait)
 	}
 
 	logger.Println("Connected to the DB")
@@ -71,5 +87,10 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 }
 
 func (app *Application) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	if err := app.DB.PingContext(r.Context()); err != nil {
+		app.Logger.Printf("HealthCheck: DB ping failed: %v", err)
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	fmt.Fprint(w, "Healthy")
 }

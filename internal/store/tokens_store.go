@@ -19,6 +19,7 @@ type TokenStore interface {
 	InsertToken(token *tokens.Token) error
 	CreateToken(userId int, ttl time.Duration, scope string) (*tokens.Token, error)
 	DeleteTokensForUser(userId int, scope string) error
+	DeleteAndCreateToken(userId int, ttl time.Duration, scope string) (*tokens.Token, error)
 }
 
 func (pg *PostgresTokenStore) InsertToken(token *tokens.Token) error {
@@ -49,4 +50,34 @@ func (pg *PostgresTokenStore) DeleteTokensForUser(userId int, scope string) erro
 	_, err := pg.db.Exec(query, userId, scope)
 
 	return err
+}
+
+func (pg *PostgresTokenStore) DeleteAndCreateToken(userId int, ttl time.Duration, scope string) (*tokens.Token, error) {
+	token, err := tokens.GenerateToken(userId, ttl, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := pg.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM tokens WHERE user_id = $1 AND scope = $2`, userId, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`INSERT INTO tokens (hash, user_id, expiry, scope) VALUES ($1, $2, $3, $4)`,
+		token.Hash, token.UserId, token.Expiry, token.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return token, nil
 }
