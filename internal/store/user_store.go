@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -64,22 +65,22 @@ func NewPostgresUserStore(db *sql.DB) *PostgresUserStore {
 }
 
 type UserStore interface {
-	GetUserById(id int) (*User, error)
-	GetUserByUsername(name string) (*User, error)
-	GetUserByToken(scope, tokenPlainText string) (*User, error)
-	CreateUser(user *User) (*User, error)
-	UpdateUser(userId int, user *User) (*User, error)
-	DeleteUser(userId int) error
+	GetUserById(ctx context.Context, id int) (*User, error)
+	GetUserByUsername(ctx context.Context, name string) (*User, error)
+	GetUserByToken(ctx context.Context, scope, tokenPlainText string) (*User, error)
+	CreateUser(ctx context.Context, user *User) (*User, error)
+	UpdateUser(ctx context.Context, userId int, user *User) (*User, error)
+	DeleteUser(ctx context.Context, userId int) error
 }
 
-func (pg *PostgresUserStore) GetUserById(id int) (*User, error) {
+func (pg *PostgresUserStore) GetUserById(ctx context.Context, id int) (*User, error) {
 	user := &User{Password: password{}}
 
 	query := `SELECT id, username, email, password_hash, created_at, updated_at
 	FROM users 
 	WHERE id = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, id).Scan(
+	err := pg.db.QueryRowContext(ctx, query, id).Scan(
 		&user.Id,
 		&user.Username,
 		&user.Email,
@@ -97,14 +98,14 @@ func (pg *PostgresUserStore) GetUserById(id int) (*User, error) {
 	return user, nil
 }
 
-func (pg *PostgresUserStore) GetUserByUsername(name string) (*User, error) {
+func (pg *PostgresUserStore) GetUserByUsername(ctx context.Context, name string) (*User, error) {
 	user := &User{Password: password{}}
 
 	query := `SELECT id, username, email, password_hash, created_at, updated_at
 	FROM users 
 	WHERE username = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, name).Scan(
+	err := pg.db.QueryRowContext(ctx, query, name).Scan(
 		&user.Id,
 		&user.Username,
 		&user.Email,
@@ -122,7 +123,7 @@ func (pg *PostgresUserStore) GetUserByUsername(name string) (*User, error) {
 	return user, nil
 }
 
-func (pg *PostgresUserStore) GetUserByToken(scope, tokenPlainText string) (*User, error) {
+func (pg *PostgresUserStore) GetUserByToken(ctx context.Context, scope, tokenPlainText string) (*User, error) {
 	tokenHash := sha256.Sum256([]byte(tokenPlainText))
 
 	query := `SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at
@@ -132,7 +133,7 @@ func (pg *PostgresUserStore) GetUserByToken(scope, tokenPlainText string) (*User
 
 	user := &User{Password: password{}}
 
-	err := pg.db.QueryRow(query, tokenHash[:], scope).Scan(
+	err := pg.db.QueryRowContext(ctx, query, tokenHash[:], scope).Scan(
 		&user.Id,
 		&user.Username,
 		&user.Email,
@@ -150,26 +151,26 @@ func (pg *PostgresUserStore) GetUserByToken(scope, tokenPlainText string) (*User
 	return user, nil
 }
 
-func (pg *PostgresUserStore) CreateUser(user *User) (*User, error) {
+func (pg *PostgresUserStore) CreateUser(ctx context.Context, user *User) (*User, error) {
 	query := `INSERT INTO users (username, email, password_hash) 
 	VALUES ($1, $2, $3) 
 	RETURNING id`
 
-	err := pg.db.QueryRow(query, user.Username, user.Email, user.Password.hash).Scan(&user.Id)
+	err := pg.db.QueryRowContext(ctx, query, user.Username, user.Email, user.Password.hash).Scan(&user.Id)
 	if err != nil {
 		return nil, translatePgError(err)
 	}
 
 	// TODO: do not expose password hash here
-	return pg.GetUserById(user.Id)
+	return pg.GetUserById(ctx, user.Id)
 }
 
-func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
+func (pg *PostgresUserStore) UpdateUser(ctx context.Context, userId int, user *User) (*User, error) {
 	query := `UPDATE users 
 	SET username = $1, email = $2, password_hash = $3, updated_at = NOW() 
 	WHERE id = $4 AND is_deleted = FALSE`
 
-	result, err := pg.db.Exec(query, user.Username, user.Email, user.Password.hash, userId)
+	result, err := pg.db.ExecContext(ctx, query, user.Username, user.Email, user.Password.hash, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -183,15 +184,15 @@ func (pg *PostgresUserStore) UpdateUser(userId int, user *User) (*User, error) {
 	}
 
 	// TODO: do not expose password hash here
-	return pg.GetUserById(userId)
+	return pg.GetUserById(ctx, userId)
 }
 
-func (pg *PostgresUserStore) DeleteUser(userId int) error {
+func (pg *PostgresUserStore) DeleteUser(ctx context.Context, userId int) error {
 	query := `UPDATE users 
 	SET is_deleted = TRUE, updated_at = NOW() 
 	WHERE id = $1 AND is_deleted = FALSE`
 
-	result, err := pg.db.Exec(query, userId)
+	result, err := pg.db.ExecContext(ctx, query, userId)
 	if err != nil {
 		return err
 	}

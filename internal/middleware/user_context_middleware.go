@@ -52,7 +52,7 @@ func (um *UserMiddleware) PopulateUserContext(next http.Handler) http.Handler {
 		}
 
 		token := headerParts[1]
-		user, err := um.UserStore.GetUserByToken(tokens.ScopeAuthentication, token)
+		user, err := um.UserStore.GetUserByToken(r.Context(), tokens.ScopeAuthentication, token)
 		if err != nil {
 			handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 			return

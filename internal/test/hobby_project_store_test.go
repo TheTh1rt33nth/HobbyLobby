@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestCreateHobbyProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			createdProject, err := projectStore.CreateHobbyProject(tt.project)
+			createdProject, err := projectStore.CreateHobbyProject(context.Background(), tt.project)
 			if tt.expectError {
 				assert.Error(t, err)
 				return
@@ -64,7 +65,7 @@ func TestCreateHobbyProject(t *testing.T) {
 			assert.Equal(t, tt.project.Name, createdProject.Name)
 			assert.Equal(t, tt.project.Description, createdProject.Description)
 
-			retrievedProject, err := projectStore.GetHobbyProjectById(createdProject.Id)
+			retrievedProject, err := projectStore.GetHobbyProjectById(context.Background(), createdProject.Id)
 			require.NoError(t, err)
 			assert.Equal(t, createdProject.Id, retrievedProject.Id)
 			assert.Equal(t, createdProject.Name, retrievedProject.Name)

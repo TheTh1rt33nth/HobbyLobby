@@ -40,6 +40,7 @@ func SetupRoutes(app *app.Application) *chi.Mux {
 	})
 
 	router.Get("/health", app.HealthCheck)
+	router.Get("/ready", app.ReadinessCheck)
 
 	// Users
 	router.Post("/api/users/register", app.UserHandler.RegisterUser)

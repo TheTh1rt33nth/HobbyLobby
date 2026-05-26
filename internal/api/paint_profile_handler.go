@@ -27,7 +27,7 @@ func NewPaintProfileHandler(paintProfileStore store.PaintProfileStore, logger *l
 func (pph *PaintProfileHandler) GetPaintProfilesByUser(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserContext(r)
 
-	profiles, err := pph.paintProfileStore.GetPaintProfilesByUserId(user.Id)
+	profiles, err := pph.paintProfileStore.GetPaintProfilesByUserId(r.Context(), user.Id)
 	if err != nil {
 		pph.logger.Printf("GetPaintProfilesByUser: failed to list profiles: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -45,7 +45,7 @@ func (pph *PaintProfileHandler) GetPaintProfileById(w http.ResponseWriter, r *ht
 		return
 	}
 
-	profile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	profile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("GetPaintProfileById: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -77,7 +77,7 @@ func (pph *PaintProfileHandler) CreatePaintProfile(w http.ResponseWriter, r *htt
 
 	profile.UserId = user.Id
 
-	createdProfile, err := pph.paintProfileStore.CreatePaintProfile(&profile)
+	createdProfile, err := pph.paintProfileStore.CreatePaintProfile(r.Context(), &profile)
 	if err != nil {
 		pph.logger.Printf("CreatePaintProfile: failed to create profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -95,7 +95,7 @@ func (pph *PaintProfileHandler) UpdatePaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	existingProfile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	existingProfile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("UpdatePaintProfile: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -119,7 +119,7 @@ func (pph *PaintProfileHandler) UpdatePaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	updatedProfile, err := pph.paintProfileStore.UpdatePaintProfile(profileId, &profile)
+	updatedProfile, err := pph.paintProfileStore.UpdatePaintProfile(r.Context(), profileId, &profile)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "paint profile not found"})
@@ -141,7 +141,7 @@ func (pph *PaintProfileHandler) DeletePaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	existingProfile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	existingProfile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("DeletePaintProfile: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -158,7 +158,7 @@ func (pph *PaintProfileHandler) DeletePaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err = pph.paintProfileStore.DeletePaintProfile(profileId); err != nil {
+	if err = pph.paintProfileStore.DeletePaintProfile(r.Context(), profileId); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "paint profile not found"})
 			return
@@ -179,7 +179,7 @@ func (pph *PaintProfileHandler) AddPaintStep(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	profile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	profile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("AddPaintStep: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -205,7 +205,7 @@ func (pph *PaintProfileHandler) AddPaintStep(w http.ResponseWriter, r *http.Requ
 
 	step.PaintProfileId = profileId
 
-	createdStep, err := pph.paintProfileStore.CreatePaintStep(&step)
+	createdStep, err := pph.paintProfileStore.CreatePaintStep(r.Context(), &step)
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			handler_utils.WriteJSON(w, http.StatusConflict, handler_utils.Envelope{"error": "a step with that order already exists in this profile"})
@@ -234,7 +234,7 @@ func (pph *PaintProfileHandler) UpdatePaintStep(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	profile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	profile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("UpdatePaintStep: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -258,7 +258,7 @@ func (pph *PaintProfileHandler) UpdatePaintStep(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	updatedStep, err := pph.paintProfileStore.UpdatePaintStep(stepId, &step)
+	updatedStep, err := pph.paintProfileStore.UpdatePaintStep(r.Context(), stepId, &step)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "paint step not found"})
@@ -287,7 +287,7 @@ func (pph *PaintProfileHandler) DeletePaintStep(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	profile, err := pph.paintProfileStore.GetPaintProfileById(profileId)
+	profile, err := pph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		pph.logger.Printf("DeletePaintStep: failed to get profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -304,7 +304,7 @@ func (pph *PaintProfileHandler) DeletePaintStep(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err = pph.paintProfileStore.DeletePaintStep(stepId); err != nil {
+	if err = pph.paintProfileStore.DeletePaintStep(r.Context(), stepId); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "paint step not found"})
 			return

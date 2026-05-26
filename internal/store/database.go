@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -14,6 +15,7 @@ import (
 var ErrNotFound = errors.New("not found")
 var ErrConflict = errors.New("conflict")
 var ErrInvalidInput = errors.New("invalid input")
+var ErrForeignKey = errors.New("foreign key violation")
 
 // translatePgError maps known postgres error codes to store sentinel errors.
 // Returns the original error unchanged if it is not a recognised postgres error.
@@ -25,8 +27,18 @@ func translatePgError(err error) error {
 	switch pgErr.Code {
 	case "23505": // unique_violation
 		return ErrConflict
+	case "23503": // foreign_key_violation
+		return ErrForeignKey
+	case "23514": // check_violation
+		return ErrInvalidInput
 	case "22P02", "22007": // invalid_text_representation, invalid_datetime_format
 		return ErrInvalidInput
+	case "55P03": // lock_not_available
+		return fmt.Errorf("resource locked: %w", ErrConflict)
+	case "40001": // serialization_failure
+		return fmt.Errorf("serialization failure: %w", ErrConflict)
+	case "40P01": // deadlock_detected
+		return fmt.Errorf("deadlock detected: %w", ErrConflict)
 	}
 	return err
 }
@@ -38,7 +50,12 @@ func Open() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	return db, err
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
+
+	return db, nil
 }
 
 func Migrate(db *sql.DB, dir string) error {
@@ -55,6 +72,7 @@ func Migrate(db *sql.DB, dir string) error {
 	return nil
 }
 
+// TODO: move this to pipeline or K8s job
 func MigrateFS(db *sql.DB, migrationsFS fs.FS, dir string) error {
 	goose.SetBaseFS(migrationsFS)
 	defer func() {

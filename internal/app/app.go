@@ -12,6 +12,7 @@ import (
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
 	"github.com/TheTh1rt33nth/HobbyLobby/migrations"
+	"github.com/cenkalti/backoff/v5"
 )
 
 type Application struct {
@@ -33,18 +34,21 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 		return nil, err
 	}
 
-	const maxRetries = 5
-	for i := 0; i < maxRetries; i++ {
-		if err = pgDb.PingContext(context.Background()); err == nil {
-			break
-		}
-		if i == maxRetries-1 {
-			pgDb.Close()
-			return nil, fmt.Errorf("database not reachable after %d attempts: %w", maxRetries, err)
-		}
-		wait := time.Duration(1<<uint(i)) * time.Second
-		logger.Printf("DB not ready (attempt %d/%d): %v. Retrying in %s...", i+1, maxRetries, err, wait)
-		time.Sleep(wait)
+	be := backoff.NewExponentialBackOff()
+	be.InitialInterval = 1 * time.Second
+	be.Multiplier = 2
+	be.MaxInterval = 30 * time.Second
+
+	if _, err = backoff.Retry(
+		context.Background(),
+		func() (struct{}, error) { return struct{}{}, pgDb.PingContext(context.Background()) },
+		backoff.WithBackOff(be),
+		backoff.WithNotify(func(err error, d time.Duration) {
+			logger.Printf("DB not ready: %v. Retrying in %s...", err, d)
+		}),
+	); err != nil {
+		pgDb.Close()
+		return nil, fmt.Errorf("database not reachable: %w", err)
 	}
 
 	logger.Println("Connected to the DB")
@@ -83,6 +87,8 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 		DB:                  pgDb,
 	}
 
+	app.startTokenCleanup(time.Hour)
+
 	return app, nil
 }
 
@@ -93,4 +99,29 @@ func (app *Application) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, "Healthy")
+}
+
+// ReadinessCheck is the Kubernetes readiness probe (/ready).
+// Returns 200 only when the database is reachable
+func (app *Application) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	if err := app.DB.PingContext(r.Context()); err != nil {
+		app.Logger.Printf("ReadinessCheck: DB ping failed: %v", err)
+		http.Error(w, "Not Ready", http.StatusServiceUnavailable)
+		return
+	}
+	fmt.Fprint(w, "Ready")
+}
+
+// startTokenCleanup runs a background goroutine that calls the
+// cleanup_expired_tokens() Postgres function on the given interval
+func (app *Application) startTokenCleanup(interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			if _, err := app.DB.Exec(`SELECT cleanup_expired_tokens()`); err != nil {
+				app.Logger.Printf("token cleanup failed: %v", err)
+			}
+		}
+	}()
 }

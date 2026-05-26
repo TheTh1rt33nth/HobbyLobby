@@ -25,6 +25,7 @@ func NewTokenHandler(tokenStore store.TokenStore, userStore store.UserStore, log
 	}
 }
 
+// TODO: rate limit
 func (th *TokenHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateTokenRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -35,7 +36,7 @@ func (th *TokenHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := th.userStore.GetUserByUsername(req.Username)
+	user, err := th.userStore.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
 		th.logger.Printf("CreateToken: failed to fetch user by username: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -61,7 +62,7 @@ func (th *TokenHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := th.tokenStore.DeleteAndCreateToken(user.Id, 24*time.Hour, "authentication")
+	token, err := th.tokenStore.DeleteAndCreateToken(r.Context(), user.Id, 24*time.Hour, "authentication")
 	if err != nil {
 		th.logger.Printf("CreateToken: failed to create token: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})

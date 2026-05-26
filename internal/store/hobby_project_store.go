@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"time"
 )
@@ -26,21 +27,21 @@ func NewPostgresHobbyProjectStore(db *sql.DB) *PostgresHobbyProjectStore {
 }
 
 type HobbyProjectStore interface {
-	GetHobbyProjectById(id int) (*HobbyProject, error)
-	GetHobbyProjectsByUserId(userId int) ([]*HobbyProject, error)
-	CreateHobbyProject(project *HobbyProject) (*HobbyProject, error)
-	UpdateHobbyProject(projectId int, project *HobbyProject) (*HobbyProject, error)
-	DeleteHobbyProject(projectId int) error
+	GetHobbyProjectById(ctx context.Context, id int) (*HobbyProject, error)
+	GetHobbyProjectsByUserId(ctx context.Context, userId int) ([]*HobbyProject, error)
+	CreateHobbyProject(ctx context.Context, project *HobbyProject) (*HobbyProject, error)
+	UpdateHobbyProject(ctx context.Context, projectId int, project *HobbyProject) (*HobbyProject, error)
+	DeleteHobbyProject(ctx context.Context, projectId int) error
 }
 
-func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(id int) (*HobbyProject, error) {
+func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(ctx context.Context, id int) (*HobbyProject, error) {
 	project := &HobbyProject{}
 
 	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
 	FROM projects
 	WHERE id = $1 AND is_deleted = FALSE`
 
-	err := pg.db.QueryRow(query, id).Scan(
+	err := pg.db.QueryRowContext(ctx, query, id).Scan(
 		&project.Id, &project.UserId, &project.Name, &project.Description,
 		&project.GameSystem, &project.Faction, &project.Status,
 		&project.CreatedAt, &project.UpdatedAt,
@@ -55,13 +56,13 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(id int) (*HobbyProject,
 	return project, nil
 }
 
-func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(userId int) ([]*HobbyProject, error) {
+func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(ctx context.Context, userId int) ([]*HobbyProject, error) {
 	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
 	FROM projects
 	WHERE user_id = $1 AND is_deleted = FALSE
 	ORDER BY created_at DESC`
 
-	rows, err := pg.db.Query(query, userId)
+	rows, err := pg.db.QueryContext(ctx, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +85,8 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(userId int) ([]*Ho
 	return projects, rows.Err()
 }
 
-func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (*HobbyProject, error) {
-	tx, err := pg.db.Begin()
+func (pg *PostgresHobbyProjectStore) CreateHobbyProject(ctx context.Context, project *HobbyProject) (*HobbyProject, error) {
+	tx, err := pg.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (
 	VALUES ($1, $2, $3, $4, $5, $6)
 	RETURNING id, created_at, updated_at`
 
-	err = tx.QueryRow(query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction, project.Status).
+	err = tx.QueryRowContext(ctx, query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction, project.Status).
 		Scan(&project.Id, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return nil, translatePgError(err)
@@ -112,8 +113,8 @@ func (pg *PostgresHobbyProjectStore) CreateHobbyProject(project *HobbyProject) (
 	return project, nil
 }
 
-func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *HobbyProject) (*HobbyProject, error) {
-	tx, err := pg.db.Begin()
+func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(ctx context.Context, projectId int, project *HobbyProject) (*HobbyProject, error) {
+	tx, err := pg.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +126,7 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *
 	RETURNING id, user_id, name, description, game_system, faction, status, created_at, updated_at`
 
 	updated := &HobbyProject{}
-	err = tx.QueryRow(query, project.Name, project.Description, project.GameSystem, project.Faction, project.Status, projectId).
+	err = tx.QueryRowContext(ctx, query, project.Name, project.Description, project.GameSystem, project.Faction, project.Status, projectId).
 		Scan(
 			&updated.Id, &updated.UserId, &updated.Name, &updated.Description,
 			&updated.GameSystem, &updated.Faction, &updated.Status,
@@ -145,8 +146,8 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(projectId int, project *
 	return updated, nil
 }
 
-func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
-	tx, err := pg.db.Begin()
+func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(ctx context.Context, projectId int) error {
+	tx, err := pg.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -157,7 +158,7 @@ func (pg *PostgresHobbyProjectStore) DeleteHobbyProject(projectId int) error {
 	SET is_deleted = TRUE, updated_at = NOW() 
 	WHERE id = $1 AND is_deleted = FALSE`
 
-	result, err := tx.Exec(query, projectId)
+	result, err := tx.ExecContext(ctx, query, projectId)
 	if err != nil {
 		return err
 	}

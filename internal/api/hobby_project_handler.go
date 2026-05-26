@@ -29,7 +29,7 @@ func NewHobbyProjectHandler(projectStore store.HobbyProjectStore, paintProfileSt
 func (hph *HobbyProjectHandler) GetHobbyProjectsByUser(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserContext(r)
 
-	projects, err := hph.projectStore.GetHobbyProjectsByUserId(user.Id)
+	projects, err := hph.projectStore.GetHobbyProjectsByUserId(r.Context(), user.Id)
 	if err != nil {
 		hph.logger.Printf("GetHobbyProjectsByUser: failed to list projects: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -47,7 +47,7 @@ func (hph *HobbyProjectHandler) GetHobbyProjectById(w http.ResponseWriter, r *ht
 		return
 	}
 
-	project, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	project, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("GetHobbyProjectById: failed to get HobbyProject: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -79,7 +79,7 @@ func (hph *HobbyProjectHandler) CreateHobbyProject(w http.ResponseWriter, r *htt
 
 	project.UserId = user.Id
 
-	createdProject, err := hph.projectStore.CreateHobbyProject(&project)
+	createdProject, err := hph.projectStore.CreateHobbyProject(r.Context(), &project)
 	if err != nil {
 		if errors.Is(err, store.ErrInvalidInput) {
 			handler_utils.WriteJSON(w, http.StatusBadRequest, handler_utils.Envelope{"error": "invalid field value"})
@@ -101,7 +101,7 @@ func (hph *HobbyProjectHandler) UpdateHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
-	existingProject, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	existingProject, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("UpdateHobbyProject: failed to get existing HobbyProject: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -125,7 +125,7 @@ func (hph *HobbyProjectHandler) UpdateHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
-	updatedProject, err := hph.projectStore.UpdateHobbyProject(hobbyProjectId, &project)
+	updatedProject, err := hph.projectStore.UpdateHobbyProject(r.Context(), hobbyProjectId, &project)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "project not found"})
@@ -147,7 +147,7 @@ func (hph *HobbyProjectHandler) DeleteHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
-	existingProject, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	existingProject, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("DeleteHobbyProject: failed to get existing HobbyProject: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -164,7 +164,7 @@ func (hph *HobbyProjectHandler) DeleteHobbyProject(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err = hph.projectStore.DeleteHobbyProject(existingProject.Id); err != nil {
+	if err = hph.projectStore.DeleteHobbyProject(r.Context(), existingProject.Id); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "project not found"})
 			return
@@ -185,7 +185,7 @@ func (hph *HobbyProjectHandler) GetPaintProfilesForProject(w http.ResponseWriter
 		return
 	}
 
-	project, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	project, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("GetPaintProfilesForProject: failed to get project: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -202,7 +202,7 @@ func (hph *HobbyProjectHandler) GetPaintProfilesForProject(w http.ResponseWriter
 		return
 	}
 
-	profiles, err := hph.paintProfileStore.GetPaintProfilesByProjectId(hobbyProjectId)
+	profiles, err := hph.paintProfileStore.GetPaintProfilesByProjectId(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("GetPaintProfilesForProject: failed to list paint profiles: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -229,7 +229,7 @@ func (hph *HobbyProjectHandler) AssignPaintProfile(w http.ResponseWriter, r *htt
 
 	user := middleware.GetUserContext(r)
 
-	project, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	project, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("AssignPaintProfile: failed to get project: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -240,7 +240,7 @@ func (hph *HobbyProjectHandler) AssignPaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	profile, err := hph.paintProfileStore.GetPaintProfileById(profileId)
+	profile, err := hph.paintProfileStore.GetPaintProfileById(r.Context(), profileId)
 	if err != nil {
 		hph.logger.Printf("AssignPaintProfile: failed to get paint profile: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -251,7 +251,7 @@ func (hph *HobbyProjectHandler) AssignPaintProfile(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if err = hph.paintProfileStore.AssignToProject(hobbyProjectId, profileId); err != nil {
+	if err = hph.paintProfileStore.AssignToProject(r.Context(), hobbyProjectId, profileId); err != nil {
 		hph.logger.Printf("AssignPaintProfile: failed to assign: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 		return
@@ -277,7 +277,7 @@ func (hph *HobbyProjectHandler) UnassignPaintProfile(w http.ResponseWriter, r *h
 
 	user := middleware.GetUserContext(r)
 
-	project, err := hph.projectStore.GetHobbyProjectById(hobbyProjectId)
+	project, err := hph.projectStore.GetHobbyProjectById(r.Context(), hobbyProjectId)
 	if err != nil {
 		hph.logger.Printf("UnassignPaintProfile: failed to get project: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
@@ -288,7 +288,7 @@ func (hph *HobbyProjectHandler) UnassignPaintProfile(w http.ResponseWriter, r *h
 		return
 	}
 
-	if err = hph.paintProfileStore.UnassignFromProject(hobbyProjectId, profileId); err != nil {
+	if err = hph.paintProfileStore.UnassignFromProject(r.Context(), hobbyProjectId, profileId); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			handler_utils.WriteJSON(w, http.StatusNotFound, handler_utils.Envelope{"error": "paint profile not assigned to this project"})
 			return
