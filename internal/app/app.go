@@ -11,7 +11,6 @@ import (
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/api"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
-	"github.com/TheTh1rt33nth/HobbyLobby/migrations"
 	"github.com/cenkalti/backoff/v5"
 )
 
@@ -52,15 +51,6 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 	}
 
 	logger.Println("Connected to the DB")
-
-	logger.Println("Migrating the DB...")
-
-	err = store.MigrateFS(pgDb, migrations.FS, ".")
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Println("DB migrated successfully")
 
 	// Stores
 	hobbyProjectStore := store.NewPostgresHobbyProjectStore(pgDb)

@@ -11,10 +11,54 @@ import (
 
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/app"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/routes"
+	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
+	"github.com/TheTh1rt33nth/HobbyLobby/migrations"
+	"github.com/cenkalti/backoff/v5"
 )
+
+func runMigrations(logger *log.Logger) error {
+	logger.Println("Connecting to DB for migrations...")
+
+	db, err := store.Open()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	be := backoff.NewExponentialBackOff()
+	be.InitialInterval = 1 * time.Second
+	be.Multiplier = 2
+	be.MaxInterval = 30 * time.Second
+
+	if _, err = backoff.Retry(
+		context.Background(),
+		func() (struct{}, error) { return struct{}{}, db.PingContext(context.Background()) },
+		backoff.WithBackOff(be),
+		backoff.WithNotify(func(err error, d time.Duration) {
+			logger.Printf("DB not ready: %v. Retrying in %s...", err, d)
+		}),
+	); err != nil {
+		return err
+	}
+
+	logger.Println("Running migrations...")
+	if err := store.MigrateFS(db, migrations.FS, "."); err != nil {
+		return err
+	}
+
+	logger.Println("Migrations completed successfully")
+	return nil
+}
 
 func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		if err := runMigrations(logger); err != nil {
+			logger.Fatalf("Migration failed: %v", err)
+		}
+		return
+	}
 
 	app, err := app.NewApplication(logger)
 	if err != nil {
