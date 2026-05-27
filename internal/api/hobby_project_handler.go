@@ -15,13 +15,15 @@ import (
 type HobbyProjectHandler struct {
 	projectStore      store.HobbyProjectStore
 	paintProfileStore store.PaintProfileStore
+	unitStore         store.UnitStore
 	logger            *log.Logger
 }
 
-func NewHobbyProjectHandler(projectStore store.HobbyProjectStore, paintProfileStore store.PaintProfileStore, logger *log.Logger) *HobbyProjectHandler {
+func NewHobbyProjectHandler(projectStore store.HobbyProjectStore, paintProfileStore store.PaintProfileStore, unitStore store.UnitStore, logger *log.Logger) *HobbyProjectHandler {
 	return &HobbyProjectHandler{
 		projectStore:      projectStore,
 		paintProfileStore: paintProfileStore,
+		unitStore:         unitStore,
 		logger:            logger,
 	}
 }
@@ -34,6 +36,24 @@ func (hph *HobbyProjectHandler) GetHobbyProjectsByUser(w http.ResponseWriter, r 
 		hph.logger.Printf("GetHobbyProjectsByUser: failed to list projects: %v", err)
 		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
 		return
+	}
+
+	projectIds := make([]int, len(projects))
+	for i, p := range projects {
+		projectIds[i] = p.Id
+	}
+	progressMap, err := hph.unitStore.GetProgressByProjectIds(r.Context(), projectIds)
+	if err != nil {
+		hph.logger.Printf("GetHobbyProjectsByUser: failed to get progress map: %v", err)
+		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
+		return
+	}
+	for _, p := range projects {
+		if prog, ok := progressMap[p.Id]; ok {
+			p.Progress = prog
+		} else {
+			p.Progress = &store.ProjectProgress{ByStatus: make(map[string]int)}
+		}
 	}
 
 	handler_utils.WriteJSON(w, http.StatusOK, handler_utils.Envelope{"hobbyProjects": projects})
@@ -63,6 +83,14 @@ func (hph *HobbyProjectHandler) GetHobbyProjectById(w http.ResponseWriter, r *ht
 		handler_utils.WriteJSON(w, http.StatusForbidden, handler_utils.Envelope{"error": "you do not have access to this project"})
 		return
 	}
+
+	progress, err := hph.unitStore.GetProgressByProjectId(r.Context(), hobbyProjectId)
+	if err != nil {
+		hph.logger.Printf("GetHobbyProjectById: failed to get progress: %v", err)
+		handler_utils.WriteJSON(w, http.StatusInternalServerError, handler_utils.Envelope{"error": "internal server error"})
+		return
+	}
+	project.Progress = progress
 
 	handler_utils.WriteJSON(w, http.StatusOK, handler_utils.Envelope{"hobbyProject": project})
 }

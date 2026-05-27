@@ -7,15 +7,15 @@ import (
 )
 
 type HobbyProject struct {
-	Id          int       `json:"id"`
-	UserId      int       `json:"userId"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description"`
-	GameSystem  *string   `json:"gameSystem"`
-	Faction     *string   `json:"faction"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Id          int              `json:"id"`
+	UserId      int              `json:"userId"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	GameSystem  *string          `json:"gameSystem"`
+	Faction     *string          `json:"faction"`
+	Progress    *ProjectProgress `json:"progress,omitempty"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
 }
 
 type PostgresHobbyProjectStore struct {
@@ -37,13 +37,13 @@ type HobbyProjectStore interface {
 func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(ctx context.Context, id int) (*HobbyProject, error) {
 	project := &HobbyProject{}
 
-	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
+	query := `SELECT id, user_id, name, description, game_system, faction, created_at, updated_at
 	FROM projects
 	WHERE id = $1 AND is_deleted = FALSE`
 
 	err := pg.db.QueryRowContext(ctx, query, id).Scan(
 		&project.Id, &project.UserId, &project.Name, &project.Description,
-		&project.GameSystem, &project.Faction, &project.Status,
+		&project.GameSystem, &project.Faction,
 		&project.CreatedAt, &project.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -57,7 +57,7 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectById(ctx context.Context, id
 }
 
 func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(ctx context.Context, userId int) ([]*HobbyProject, error) {
-	query := `SELECT id, user_id, name, description, game_system, faction, status, created_at, updated_at
+	query := `SELECT id, user_id, name, description, game_system, faction, created_at, updated_at
 	FROM projects
 	WHERE user_id = $1 AND is_deleted = FALSE
 	ORDER BY created_at DESC`
@@ -73,7 +73,7 @@ func (pg *PostgresHobbyProjectStore) GetHobbyProjectsByUserId(ctx context.Contex
 		project := &HobbyProject{}
 		err = rows.Scan(
 			&project.Id, &project.UserId, &project.Name, &project.Description,
-			&project.GameSystem, &project.Faction, &project.Status,
+			&project.GameSystem, &project.Faction,
 			&project.CreatedAt, &project.UpdatedAt,
 		)
 		if err != nil {
@@ -92,15 +92,11 @@ func (pg *PostgresHobbyProjectStore) CreateHobbyProject(ctx context.Context, pro
 	}
 	defer tx.Rollback()
 
-	if project.Status == "" {
-		project.Status = "unassembled"
-	}
-
-	query := `INSERT INTO projects (user_id, name, description, game_system, faction, status)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	query := `INSERT INTO projects (user_id, name, description, game_system, faction)
+	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id, created_at, updated_at`
 
-	err = tx.QueryRowContext(ctx, query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction, project.Status).
+	err = tx.QueryRowContext(ctx, query, project.UserId, project.Name, project.Description, project.GameSystem, project.Faction).
 		Scan(&project.Id, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return nil, translatePgError(err)
@@ -121,15 +117,15 @@ func (pg *PostgresHobbyProjectStore) UpdateHobbyProject(ctx context.Context, pro
 	defer tx.Rollback()
 
 	query := `UPDATE projects
-	SET name = $1, description = $2, game_system = $3, faction = $4, status = $5, updated_at = NOW()
-	WHERE id = $6 AND is_deleted = FALSE
-	RETURNING id, user_id, name, description, game_system, faction, status, created_at, updated_at`
+	SET name = $1, description = $2, game_system = $3, faction = $4, updated_at = NOW()
+	WHERE id = $5 AND is_deleted = FALSE
+	RETURNING id, user_id, name, description, game_system, faction, created_at, updated_at`
 
 	updated := &HobbyProject{}
-	err = tx.QueryRowContext(ctx, query, project.Name, project.Description, project.GameSystem, project.Faction, project.Status, projectId).
+	err = tx.QueryRowContext(ctx, query, project.Name, project.Description, project.GameSystem, project.Faction, projectId).
 		Scan(
 			&updated.Id, &updated.UserId, &updated.Name, &updated.Description,
-			&updated.GameSystem, &updated.Faction, &updated.Status,
+			&updated.GameSystem, &updated.Faction,
 			&updated.CreatedAt, &updated.UpdatedAt,
 		)
 	if err == sql.ErrNoRows {

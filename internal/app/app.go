@@ -18,6 +18,7 @@ type Application struct {
 	Logger              *log.Logger
 	HobbyProjectHandler *api.HobbyProjectHandler
 	PaintProfileHandler *api.PaintProfileHandler
+	UnitHandler         *api.UnitHandler
 	UserHandler         *api.UserHandler
 	TokenHandler        *api.TokenHandler
 	UserMiddleware      middleware.UserMiddleware
@@ -55,12 +56,14 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 	// Stores
 	hobbyProjectStore := store.NewPostgresHobbyProjectStore(pgDb)
 	paintProfileStore := store.NewPostgresPaintProfileStore(pgDb)
+	unitStore := store.NewPostgresUnitStore(pgDb)
 	userStore := store.NewPostgresUserStore(pgDb)
 	tokenStore := store.NewPostgresTokenStore(pgDb)
 
 	// Handlers
-	hobbyProjectHandler := api.NewHobbyProjectHandler(hobbyProjectStore, paintProfileStore, logger)
+	hobbyProjectHandler := api.NewHobbyProjectHandler(hobbyProjectStore, paintProfileStore, unitStore, logger)
 	paintProfileHandler := api.NewPaintProfileHandler(paintProfileStore, logger)
+	unitHandler := api.NewUnitHandler(unitStore, hobbyProjectStore, logger)
 	userHandler := api.NewUserHandler(userStore, logger)
 	tokenHandler := api.NewTokenHandler(tokenStore, userStore, logger)
 
@@ -71,6 +74,7 @@ func NewApplication(logger *log.Logger) (*Application, error) {
 		Logger:              logger,
 		HobbyProjectHandler: hobbyProjectHandler,
 		PaintProfileHandler: paintProfileHandler,
+		UnitHandler:         unitHandler,
 		UserHandler:         userHandler,
 		TokenHandler:        tokenHandler,
 		UserMiddleware:      userMiddleware,

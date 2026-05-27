@@ -96,7 +96,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	errs := make(chan error, 1)
 
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL, os.Interrupt)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, os.Interrupt)
 
 	go func() {
 		errs <- server.ListenAndServe()

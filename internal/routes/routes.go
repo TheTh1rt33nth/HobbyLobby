@@ -13,12 +13,22 @@ func SetupRoutes(app *app.Application) *chi.Mux {
 		r.Use(app.UserMiddleware.PopulateUserContext)
 		r.Use(app.UserMiddleware.RequireAuthenticatedUserContext)
 
+		// Current user
+		r.Get("/api/users/me", app.UserHandler.GetCurrentUser)
+
 		// Hobby projects
 		r.Get("/api/hobby-projects", app.HobbyProjectHandler.GetHobbyProjectsByUser)
 		r.Get("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.GetHobbyProjectById)
 		r.Post("/api/hobby-projects", app.HobbyProjectHandler.CreateHobbyProject)
 		r.Put("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.UpdateHobbyProject)
 		r.Delete("/api/hobby-projects/{projectId}", app.HobbyProjectHandler.DeleteHobbyProject)
+
+		// Units within a project
+		r.Get("/api/hobby-projects/{projectId}/units", app.UnitHandler.GetUnitsByProject)
+		r.Post("/api/hobby-projects/{projectId}/units", app.UnitHandler.CreateUnit)
+		r.Get("/api/hobby-projects/{projectId}/units/{unitId}", app.UnitHandler.GetUnitById)
+		r.Put("/api/hobby-projects/{projectId}/units/{unitId}", app.UnitHandler.UpdateUnit)
+		r.Delete("/api/hobby-projects/{projectId}/units/{unitId}", app.UnitHandler.DeleteUnit)
 
 		// Paint profiles for a project
 		r.Get("/api/hobby-projects/{projectId}/paint-profiles", app.HobbyProjectHandler.GetPaintProfilesForProject)

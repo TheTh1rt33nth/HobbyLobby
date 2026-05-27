@@ -79,7 +79,6 @@ func Migrate(db *sql.DB, dir string) error {
 	return nil
 }
 
-// TODO: move this to pipeline or K8s job
 func MigrateFS(db *sql.DB, migrationsFS fs.FS, dir string) error {
 	goose.SetBaseFS(migrationsFS)
 	defer func() {

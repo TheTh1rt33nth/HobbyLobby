@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/dto"
+	"github.com/TheTh1rt33nth/HobbyLobby/internal/middleware"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/store"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/utils/handler_utils"
 	"github.com/TheTh1rt33nth/HobbyLobby/internal/utils/validation_utils"
@@ -65,4 +66,9 @@ func (uh *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	handler_utils.WriteJSON(w, http.StatusCreated, handler_utils.Envelope{"user": user})
 
+}
+
+func (uh *UserHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserContext(r)
+	handler_utils.WriteJSON(w, http.StatusOK, handler_utils.Envelope{"user": user})
 }
