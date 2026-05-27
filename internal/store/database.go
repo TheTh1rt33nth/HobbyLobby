@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -44,8 +45,14 @@ func translatePgError(err error) error {
 }
 
 func Open() (*sql.DB, error) {
-	db, err := sql.Open("pgx", "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable")
+	dbHost := os.Getenv("POSTGRES_URL")
+	dbPort := os.Getenv("POSTGRES_PORT")
+	dbName := os.Getenv("POSTGRES_DB")
+	dbUser := os.Getenv("POSTGRES_USER")
+	//TODO: don't read password from env var
+	dbPassword := os.Getenv("POSTGRES_PASSWORD")
 
+	db, err := sql.Open("pgx", fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPassword, dbName, dbPort))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
