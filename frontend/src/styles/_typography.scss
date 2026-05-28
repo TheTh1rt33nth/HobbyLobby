@@ -1,0 +1,43 @@
+@use "tokens" as *;
+
+// Base heading style
+%heading-base {
+  font-family: $font-heading;
+  font-weight: $weight-bold;
+  line-height: 1.15;
+  color: $color-text-primary;
+}
+
+// Heading scale
+.h1, %h1 {
+  @extend %heading-base;
+  font-size: $font-heading-xl;
+  letter-spacing: $tracking-wide;
+}
+
+.h2, %h2 {
+  @extend %heading-base;
+  font-size: $font-heading-lg;
+  letter-spacing: $tracking-wide;
+}
+
+.h3, %h3 {
+  @extend %heading-base;
+  font-size: $font-heading-md;
+}
+
+.h4, %h4 {
+  @extend %heading-base;
+  font-size: $font-heading-sm;
+  letter-spacing: $tracking-wider;
+  text-transform: uppercase;
+  color: $color-text-secondary;
+}
+
+// Metadata / mono
+.meta, %meta {
+  font-family: $font-mono;
+  font-size: $font-mono-size;
+  color: $color-text-secondary;
+  letter-spacing: 0.04em;
+}

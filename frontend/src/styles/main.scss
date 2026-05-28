@@ -1,0 +1,238 @@
+@use "tokens" as *;
+@use "mixins" as *;
+@use "typography";
+
+// Reset & Base
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: $color-bg-base;
+  color: $color-text-primary;
+  font-family: $font-body;
+  font-size: $font-body-md;
+  font-weight: $weight-regular;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+// Focus management
+:focus-visible {
+  @include focus-ring;
+}
+
+// Links
+a {
+  color: $color-accent-amber;
+  text-decoration: none;
+
+  &:hover {
+    color: $color-text-primary;
+    text-decoration: underline;
+  }
+}
+
+// Form base
+
+input,
+select,
+textarea {
+  font-family: $font-body;
+  font-size: $font-body-md;
+  color: $color-text-primary;
+  background: $color-bg-elevated;
+  border: 1px solid $color-border-default;
+  border-radius: $radius-md;
+  padding: $spacing-2 $spacing-3;
+  width: 100%;
+  transition: border-color 0.15s ease;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+    border-color: $color-accent-amber;
+    box-shadow: 0 0 0 2px rgba($color-accent-amber, 0.2);
+  }
+
+  &::placeholder {
+    color: $color-text-disabled;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23a9a392' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right $spacing-3 center;
+  padding-right: $spacing-8;
+  cursor: pointer;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+// Transitions (reduced-motion safe)
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.15s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
+
+  .slide-up-enter-active,
+  .slide-up-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .slide-up-enter-from,
+  .slide-up-leave-to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+// Utility classes
+
+.visually-hidden {
+  @include visually-hidden;
+}
+
+.truncate {
+  @include truncate;
+}
+
+.section-label {
+  @include section-label;
+}
+
+// ── Shared page-level layout utilities ───────────────────────────────────────
+// Used across multiple views to avoid duplicating identical SCSS blocks.
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-4;
+  padding-bottom: $spacing-6;
+  border-bottom: 1px solid $color-border-default;
+}
+
+.page-title {
+  font-family: $font-heading;
+  font-size: $font-heading-xl;
+  font-weight: $weight-bold;
+  letter-spacing: $tracking-wider;
+  color: $color-text-primary;
+}
+
+.page-subtitle {
+  color: $color-text-secondary;
+  font-size: $font-body-sm;
+  margin-top: $spacing-1;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  @include section-label;
+}
+
+// ── Auth page layout ──────────────────────────────────────────────────────────
+// Shared between LoginView and RegisterView.
+
+.auth-page {
+  min-height: 100vh;
+  background: $color-bg-base;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-4;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card {
+  @include panel-frame($bg: $color-bg-surface, $notch: true);
+  width: 100%;
+  max-width: 420px;
+  padding: $spacing-8;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-5;
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-1;
+  }
+
+  &__logo {
+    font-family: $font-heading;
+    font-size: 26px;
+    font-weight: $weight-bold;
+    letter-spacing: $tracking-wider;
+    color: $color-accent-amber;
+  }
+
+  &__tagline {
+    font-family: $font-mono;
+    font-size: 10px;
+    letter-spacing: $tracking-wider;
+    color: $color-text-disabled;
+    text-transform: uppercase;
+  }
+
+  &__success {
+    padding: $spacing-3 $spacing-4;
+    border: 1px solid rgba($color-success, 0.4);
+    border-radius: $radius-md;
+    background: rgba($color-success, 0.08);
+    color: $color-success;
+    font-size: $font-body-sm;
+    text-align: center;
+  }
+
+  &__footer-text {
+    text-align: center;
+    font-size: $font-body-sm;
+    color: $color-text-secondary;
+  }
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
