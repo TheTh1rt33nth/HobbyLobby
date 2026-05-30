@@ -94,6 +94,29 @@ func (pg *PostgresPaintProfileStore) GetPaintProfileById(ctx context.Context, id
 	return profile, rows.Err()
 }
 
+func (pg *PostgresPaintProfileStore) loadStepsForProfile(ctx context.Context, profile *PaintProfile) error {
+	stepsQuery := `SELECT id, step_order, paint_name, brand, paint_type, application_method, color_hex, notes
+	FROM paint_steps
+	WHERE paint_profile_id = $1
+	ORDER BY step_order`
+
+	stepRows, err := pg.db.QueryContext(ctx, stepsQuery, profile.Id)
+	if err != nil {
+		return err
+	}
+	defer stepRows.Close()
+
+	for stepRows.Next() {
+		step := PaintStep{PaintProfileId: profile.Id}
+		err = stepRows.Scan(&step.Id, &step.StepOrder, &step.PaintName, &step.Brand, &step.PaintType, &step.ApplicationMethod, &step.ColorHex, &step.Notes)
+		if err != nil {
+			return err
+		}
+		profile.Steps = append(profile.Steps, step)
+	}
+	return stepRows.Err()
+}
+
 func (pg *PostgresPaintProfileStore) GetPaintProfilesByUserId(ctx context.Context, userId int) ([]*PaintProfile, error) {
 	query := `SELECT id, user_id, name, description, target_area, created_at, updated_at
 	FROM paint_profiles
@@ -115,8 +138,17 @@ func (pg *PostgresPaintProfileStore) GetPaintProfilesByUserId(ctx context.Contex
 		}
 		profiles = append(profiles, profile)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return profiles, rows.Err()
+	for _, profile := range profiles {
+		if err = pg.loadStepsForProfile(ctx, profile); err != nil {
+			return nil, err
+		}
+	}
+
+	return profiles, nil
 }
 
 func (pg *PostgresPaintProfileStore) GetPaintProfilesByProjectId(ctx context.Context, projectId int) ([]*PaintProfile, error) {
@@ -141,8 +173,17 @@ func (pg *PostgresPaintProfileStore) GetPaintProfilesByProjectId(ctx context.Con
 		}
 		profiles = append(profiles, profile)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return profiles, rows.Err()
+	for _, profile := range profiles {
+		if err = pg.loadStepsForProfile(ctx, profile); err != nil {
+			return nil, err
+		}
+	}
+
+	return profiles, nil
 }
 
 func (pg *PostgresPaintProfileStore) CreatePaintProfile(ctx context.Context, profile *PaintProfile) (*PaintProfile, error) {
